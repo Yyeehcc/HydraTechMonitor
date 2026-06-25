@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HydroTechMonitor | Жамбылская область</title>
+<link rel="stylesheet" href="lib/leaflet.css"/>
+<link rel="stylesheet" href="lib/fa.css"/>
+<link rel="stylesheet" href="style.css?v=2"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <i class="fa-solid fa-water"></i>
+      <span class="logo-text">HydroTech<span class="logo-accent">Monitor</span></span>
+    </div>
+    <div class="header-region">
+      <i class="fa-solid fa-location-dot"></i>
+      <span data-i18n="region">Жамбылская область, Казахстан</span>
+      <span class="header-subtitle" data-i18n="subtitle">· Мониторинг гидротехнических сооружений РГП «Казводхоз»</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-stat"><span id="hdr-total">344</span><small data-i18n="hdr_objects">Объектов</small></div>
+    <div class="header-stat critical-stat"><span id="hdr-critical">—</span><small data-i18n="hdr_critical">Критических</small></div>
+    <div class="header-stat sensor-stat"><span id="hdr-sensors">—</span><small data-i18n="hdr_sensors">Датчиков онлайн</small></div>
+    <div class="header-time" id="header-time"></div>
+    <div class="header-controls">
+      <button class="btn-lang" id="btnLang" onclick="toggleLang()">EN</button>
+      <button class="btn-theme" id="btnTheme" onclick="toggleTheme()" title="Сменить тему"><i class="fa-solid fa-sun"></i></button>
+      <button class="btn-refresh" onclick="refreshData()"><i class="fa-solid fa-rotate"></i> <span data-i18n="refresh">Обновить</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT SIDEBAR -->
+  <button class="panel-toggle panel-toggle-left" id="toggleLeft" onclick="togglePanel('left')" title="Свернуть панель"><i class="fa-solid fa-chevron-left"></i></button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <h3><i class="fa-solid fa-sliders"></i> <span data-i18n="filters">Фильтры</span></h3>
+      <div class="filter-group">
+        <label data-i18n="status_label">Статус объекта</label>
+        <div class="filter-chips">
+          <button class="chip chip-all active" onclick="setFilter('all',this)" data-i18n="f_all">Все</button>
+          <button class="chip chip-ok" onclick="setFilter('ok',this)"><i class="fa-solid fa-circle-check"></i> <span data-i18n="f_ok">Норма</span></button>
+          <button class="chip chip-warning" onclick="setFilter('warning',this)"><i class="fa-solid fa-triangle-exclamation"></i> <span data-i18n="f_warning">Осмотр</span></button>
+          <button class="chip chip-critical" onclick="setFilter('critical',this)"><i class="fa-solid fa-circle-xmark"></i> <span data-i18n="f_critical">Ремонт</span></button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label data-i18n="district">Район</label>
+        <select id="zoneFilter" onchange="applyFilters()">
+          <option value="">Все районы</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label data-i18n="water_source">Источник воды</label>
+        <select id="sourceFilter" onchange="applyFilters()">
+          <option value="">Все источники</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label data-i18n="build_year">Год постройки</label>
+        <div class="range-row">
+          <input type="number" id="yearFrom" placeholder="с 1920" data-i18n-placeholder="yr_from" min="1900" max="2026" onchange="applyFilters()">
+          <span>—</span>
+          <input type="number" id="yearTo" placeholder="до 2026" data-i18n-placeholder="yr_to" min="1900" max="2026" onchange="applyFilters()">
+        </div>
+      </div>
+      <div class="filter-group">
+        <label data-i18n="wear_max" data-i18n-title="wear_help" title="Степень износа сооружения, %. Ползунок показывает объекты с износом НЕ ВЫШЕ выбранного.">Износ (макс.) <i class="fa-solid fa-circle-question" style="opacity:.5;font-size:10px"></i></label>
+        <input type="range" id="wearMax" min="0" max="1" step="0.05" value="1" oninput="updateWearLabel(this);applyFilters()">
+        <span class="range-label" id="wearLabel">до 100%</span>
+        <div class="filter-hint" data-i18n="wear_help">Износ сооружения в %. Показывает объекты с износом не выше выбранного.</div>
+      </div>
+      <div class="filter-group">
+        <label data-i18n-title="alerts_help" title="Показать только объекты, у которых датчики сейчас выдают тревогу (превышение уровня, мутности, температуры, неисправность или офлайн)."><input type="checkbox" id="alertsOnly" onchange="applyFilters()"> <span data-i18n="alerts_only">Только с тревогами датчиков</span> <i class="fa-solid fa-circle-question" style="opacity:.5;font-size:10px"></i></label>
+        <div class="filter-hint" data-i18n="alerts_help">Только объекты с активной тревогой датчиков.</div>
+      </div>
+      <button class="btn-reset" onclick="resetFilters()"><i class="fa-solid fa-xmark"></i> <span data-i18n="reset_btn">Сбросить</span></button>
+    </div>
+
+    <div class="sidebar-section">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> <span data-i18n="search">Поиск</span></h3>
+      <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="search_ph" placeholder="Название / район / ID..." oninput="applyFilters()">
+    </div>
+
+    <div class="sidebar-section">
+      <h3><i class="fa-solid fa-chart-pie"></i> <span data-i18n="statistics">Статистика</span></h3>
+      <div class="stat-cards">
+        <div class="stat-card ok">
+          <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div><div class="stat-num" id="stat-ok">—</div><div class="stat-lbl" data-i18n="s_ok">Норма</div></div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div><div class="stat-num" id="stat-warning">—</div><div class="stat-lbl" data-i18n="s_warning">Требует осмотра</div></div>
+        </div>
+        <div class="stat-card critical">
+          <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+          <div><div class="stat-num" id="stat-critical">—</div><div class="stat-lbl" data-i18n="s_critical">Требует ремонта</div></div>
+        </div>
+      </div>
+      <canvas id="statusChart" width="220" height="140"></canvas>
+    </div>
+
+    <div class="sidebar-section">
+      <h3><i class="fa-solid fa-list"></i> <span data-i18n="objects">Объекты</span> <span class="count-badge" id="list-count">344</span></h3>
+      <div class="canal-list" id="canalList"></div>
+    </div>
+  </aside>
+
+  <!-- MAP -->
+  <main class="map-container">
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="legend-title" data-i18n="condition">Состояние</div>
+      <div class="legend-item"><span class="legend-dot ok"></span> <span data-i18n="s_ok">Норма</span></div>
+      <div class="legend-item"><span class="legend-dot warning"></span> <span data-i18n="s_warning">Требует осмотра</span></div>
+      <div class="legend-item"><span class="legend-dot critical"></span> <span data-i18n="s_critical">Требует ремонта</span></div>
+      <div class="legend-item"><span class="legend-dot offline"></span> <span data-i18n="offline">Датчик офлайн</span></div>
+      <div class="legend-item"><span class="legend-dot reservoir"></span> <span data-i18n="reservoir">Водохранилище</span></div>
+    </div>
+    <div class="map-controls">
+      <button class="map-btn" onclick="map.zoomIn()"><i class="fa-solid fa-plus"></i></button>
+      <button class="map-btn" onclick="map.zoomOut()"><i class="fa-solid fa-minus"></i></button>
+      <button class="map-btn" onclick="fitAll()" title="Показать все"><i class="fa-solid fa-expand"></i></button>
+      <button class="map-btn" onclick="toggleSensorView()" id="sensorViewBtn" title="Режим датчиков"><i class="fa-solid fa-satellite-dish"></i></button>
+    </div>
+    <!-- Live ticker for sensor alerts -->
+    <div class="alert-ticker" id="alertTicker"></div>
+  </main>
+
+  <!-- RIGHT PANEL (detail + sensors) -->
+  <button class="panel-toggle panel-toggle-right" id="toggleRight" onclick="togglePanel('right')" title="Свернуть панель"><i class="fa-solid fa-chevron-right"></i></button>
+  <aside class="detail-panel" id="detailPanel">
+    <div class="detail-placeholder" id="detailPlaceholder">
+      <i class="fa-solid fa-satellite-dish fa-2x"></i>
+      <p data-i18n="click_hint">Нажмите на объект на карте для просмотра данных датчиков</p>
+    </div>
+    <div class="detail-content" id="detailContent" style="display:none">
+      <div class="detail-header">
+        <div class="detail-status-badge" id="dStatusBadge"></div>
+        <button class="detail-close" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <h2 id="dName"></h2>
+      <div class="detail-zone" id="dZone"></div>
+
+      <!-- SENSOR PANEL -->
+      <div class="sensor-panel">
+        <div class="sensor-header">
+          <span><i class="fa-solid fa-microchip"></i> <span data-i18n="sensors_title">Данные датчика</span></span>
+          <span class="sensor-status" id="sSensorStatus"></span>
+        </div>
+        <div class="sensor-grid">
+          <div class="sensor-card" id="sc-flow">
+            <div class="sensor-icon"><i class="fa-solid fa-gauge-high"></i></div>
+            <div class="sensor-val" id="sv-flow">—</div>
+            <div class="sensor-unit" data-i18n="u_flow">м/с</div>
+            <div class="sensor-lbl" data-i18n="sl_flow">Скорость течения</div>
+          </div>
+          <div class="sensor-card" id="sc-temp">
+            <div class="sensor-icon"><i class="fa-solid fa-temperature-half"></i></div>
+            <div class="sensor-val" id="sv-temp">—</div>
+            <div class="sensor-unit">°C</div>
+            <div class="sensor-lbl" data-i18n="sl_temp">Температура воды</div>
+          </div>
+          <div class="sensor-card" id="sc-level">
+            <div class="sensor-icon"><i class="fa-solid fa-water"></i></div>
+            <div class="sensor-val" id="sv-level">—</div>
+            <div class="sensor-unit" data-i18n="u_m">м</div>
+            <div class="sensor-lbl" data-i18n="sl_level">Уровень воды</div>
+          </div>
+          <div class="sensor-card" id="sc-turb">
+            <div class="sensor-icon"><i class="fa-solid fa-flask"></i></div>
+            <div class="sensor-val" id="sv-turb">—</div>
+            <div class="sensor-unit">NTU</div>
+            <div class="sensor-lbl" data-i18n="sl_turb">Мутность</div>
+          </div>
+          <div class="sensor-card" id="sc-ph">
+            <div class="sensor-icon"><i class="fa-solid fa-vial"></i></div>
+            <div class="sensor-val" id="sv-ph">—</div>
+            <div class="sensor-unit">pH</div>
+            <div class="sensor-lbl" data-i18n="sl_ph">Кислотность</div>
+          </div>
+          <div class="sensor-card" id="sc-cond">
+            <div class="sensor-icon"><i class="fa-solid fa-bolt"></i></div>
+            <div class="sensor-val" id="sv-cond">—</div>
+            <div class="sensor-unit" data-i18n="u_cond">мкС/см</div>
+            <div class="sensor-lbl" data-i18n="sl_cond">Проводимость</div>
+          </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="sensor-alerts" id="sAlerts"></div>
+
+        <!-- Mini chart: 24h flow speed -->
+        <div class="minichart-wrap">
+          <div class="minichart-title"><i class="fa-solid fa-chart-line"></i> Скорость течения — последние 24 ч</div>
+          <canvas id="miniChart" height="60"></canvas>
+        </div>
+
+        <div class="sensor-meta">
+          <span><i class="fa-solid fa-clock"></i> <span data-i18n="meta_updated">Обновлено:</span> <span id="sLastUpdate">—</span></span>
+          <span><i class="fa-solid fa-battery-three-quarters"></i> <span data-i18n="meta_battery">Батарея:</span> <span id="sBattery">—</span>%</span>
+        </div>
+      </div>
+
+      <!-- GTS DEFECT DIAGNOSTICS -->
+      <div class="detail-divider" data-i18n="diag_gts">Диагностика ГТС</div>
+      <div class="defect-panel" id="defectPanel">
+        <div class="defect-header">
+          <span class="defect-code" id="dDefectCode"></span>
+          <span class="defect-urgency" id="dDefectUrgency"></span>
+        </div>
+        <div class="defect-name" id="dDefectName"></div>
+        <div class="defect-desc" id="dDefectDesc"></div>
+        <div class="defect-remedy-label"><i class="fa-solid fa-screwdriver-wrench"></i> <span data-i18n="remedy_label">Рекомендуемые меры:</span></div>
+        <div class="defect-remedy" id="dDefectRemedy"></div>
+      </div>
+
+      <!-- SENSOR FAULT DIAGNOSTICS -->
+      <div id="sensorFaultSection" style="display:none">
+        <div class="detail-divider" data-i18n="sensor_fault">Неисправность датчика</div>
+        <div class="fault-panel">
+          <div class="fault-component" id="fComponent"></div>
+          <div class="fault-badge-row">
+            <span class="fault-code" id="fCode"></span>
+            <span class="fault-priority" id="fPriority"></span>
+          </div>
+          <div class="fault-title" id="fFault"></div>
+          <div class="fault-detail" id="fDetail"></div>
+          <div class="fault-fix-label"><i class="fa-solid fa-wrench"></i> <span data-i18n="fix_label">Способ устранения:</span></div>
+          <div class="fault-fix" id="fFix"></div>
+        </div>
+      </div>
+
+      <!-- OBJECT INFO -->
+      <div class="detail-divider" data-i18n="obj_info">Характеристики объекта</div>
+      <div class="detail-grid">
+        <div class="dg-item"><span class="dg-label">ID</span><span id="dId"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_year">Год постройки</span><span id="dYear"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_source">Источник воды</span><span id="dSource"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_cap">Пропускная способность</span><span id="dCap"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_len">Протяжённость</span><span id="dLen"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_area">Площадь орошения</span><span id="dArea"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_kpd">КПД проектный / факт</span><span id="dKpd"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_wear">Износ</span><span id="dWear"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_structs">Сооружений</span><span id="dStructs"></span></div>
+        <div class="dg-item"><span class="dg-label" data-i18n="og_insp">Осмотр каждые</span><span id="dInsp"></span></div>
+      </div>
+
+      <!-- Risk -->
+      <div class="risk-meter">
+        <div class="risk-label" data-i18n="risk_label">Индекс риска</div>
+        <div class="risk-bar"><div class="risk-fill" id="dRiskFill"></div></div>
+        <div class="risk-val" id="dRiskVal"></div>
+      </div>
+
+      <div class="detail-actions">
+        <button class="btn-action btn-3d" onclick="show3DView()"><i class="fa-solid fa-cube"></i> <span data-i18n="btn_3d">3D Схема</span></button>
+        <button class="btn-action btn-report" onclick="generateReport()"><i class="fa-solid fa-file-lines"></i> <span data-i18n="btn_report">Отчёт</span></button>
+        <button class="btn-action btn-track" onclick="trackObject()"><i class="fa-solid fa-bell"></i> <span data-i18n="btn_track">Отслеживать</span></button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- 3D DIAGRAM MODAL -->
+<div class="modal-overlay" id="diagram3dModal" style="display:none" onclick="if(event.target===this)close3DView()">
+  <div class="modal modal-3d">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-cube"></i> <span id="diagram3dTitle">3D Схема установки</span></h3>
+      <button onclick="close3DView()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="diagram3dBody" style="padding:12px;border-radius:0 0 10px 10px"></div>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-file-chart-line"></i> <span data-i18n="rep_title">Технический отчёт</span></h3>
+      <button onclick="closeReport()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-footer">
+      <button class="btn-action btn-report" onclick="printReport()"><i class="fa-solid fa-print"></i> Печать</button>
+      <button class="btn-action btn-track" onclick="closeReport()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="lib/leaflet.js"></script>
+<script src="geo_data.js?v=8"></script>
+<script src="i18n_data.js?v=8"></script>
+<script src="data.js?v=8"></script>
+<script src="app.js?v=8"></script>
+</body>
+</html>
