@@ -1,5 +1,5 @@
 'use strict';
-// ── i18n ───────────────────────────────────────────────────
+// i18n
 const LANG = {
   ru: {
     region:'Жамбылская область, Казахстан', subtitle:'· Мониторинг гидротехнических сооружений РГП «Казводхоз»',
@@ -138,7 +138,7 @@ function toggleLang() {
   if (selectedId != null) showDetail(selectedId, selectedIsReservoir);
 }
 
-// ── i18n data helpers (EN overrides from i18n_data.js, fall back to RU data) ──
+// i18n data helpers (EN overrides from i18n_data.js, fall back to RU data)
 const EN = () => currentLang === 'en';
 function tt(k) { return (LANG[currentLang] && LANG[currentLang][k]) || k; }
 function tZone(z)   { return EN() && ZONE_EN[z]   ? ZONE_EN[z]   : (z || ''); }
@@ -176,19 +176,16 @@ function tAlert(a, fault) {
 function tResDesc(obj) { return (EN() && RES_TEXT_EN[obj.id]) ? RES_TEXT_EN[obj.id].desc : obj.desc; }
 function tResName(obj) { return (EN() && RES_NAME_EN[obj.id]) ? RES_NAME_EN[obj.id] : obj.name; }
 
-// ── Theme ──────────────────────────────────────────────────
-// Theme cycles: dark → light → dark
+// Theme: toggles the dashboard between dark and light. Both keep the same Esri
+// satellite imagery on the map — only the surrounding UI colors change.
 let currentTheme = 'dark';
-const TILES = {
-  dark:      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  light:     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-};
+const ESRI_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const TILES = { dark: ESRI_IMAGERY, light: ESRI_IMAGERY };
 const THEME_CYCLE = ['dark', 'light'];
 const THEME_ICONS = { dark: 'fa-solid fa-sun', light: 'fa-solid fa-moon' };
 const THEME_TIPS  = { dark: 'Переключить на светлую тему', light: 'Переключить на тёмную тему' };
 
-// ── Collapsible panels ─────────────────────────────────────
+// Collapsible panels
 function togglePanel(side) {
   if (side === 'left') {
     const sb = document.getElementById('sidebar');
@@ -226,7 +223,7 @@ function toggleTheme() {
   showToast(THEME_TIPS[currentTheme]);
 }
 
-// ── Rivers data — REAL coordinates from OpenStreetMap (see geo_data.js) ─
+// Rivers data — REAL coordinates from OpenStreetMap (see geo_data.js)
 const RIVER_LINES = (typeof REAL_RIVERS !== 'undefined') ? REAL_RIVERS : {};
 
 // District label centers for Zhambyl Oblast
@@ -246,14 +243,14 @@ const DISTRICT_LABELS = [
 let riverLayer = null;
 let districtLayer = null;
 
-// ── State ──────────────────────────────────────────────────
+// State
 let map, markersGroup, reservoirGroup, currentFilter = 'all', selectedId = null, selectedIsReservoir = false;
 let sensorViewOn = false, filteredCanals = [...CANALS_DATA];
 const trackedIds = new Set();
 let sensorInterval = null;
 let listLimit = 120;
 
-// ── Init ───────────────────────────────────────────────────
+// Init
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   populateFilters();
@@ -268,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModalDismiss();
 });
 
-// ── Modal helpers ──────────────────────────────────────────
+// Modal helpers
 // Open/close with a fade+scale animation. Display is still toggled so the
 // print stylesheet (which keys off inline display) keeps working.
 function openModal(id) {
@@ -301,7 +298,7 @@ function setupModalDismiss() {
   });
 }
 
-// ── Debounce ───────────────────────────────────────────────
+// Debounce
 function debounce(fn, wait) {
   let t;
   return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), wait); };
@@ -315,7 +312,7 @@ function updateTime() {
   document.getElementById('header-time').textContent = d.toLocaleTimeString('ru-RU');
 }
 
-// ── Map ────────────────────────────────────────────────────
+// Map
 function initMap() {
   map = L.map('map', {
     zoomControl: false,
@@ -335,7 +332,7 @@ function initMap() {
     worldCopyJump: false
   }).setView([42.90, 71.37], 8);
 
-  window._tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  window._tileLayer = L.tileLayer(ESRI_IMAGERY, {
     maxZoom: 21,              // Leaflet upscales past native for closer zoom
     maxNativeZoom: 19,        // Esri imagery is served up to z19
     updateWhenZooming: false, // don't reload tiles mid-zoom — less jank
@@ -530,7 +527,7 @@ function toggleSensorView() {
   showToast(sensorViewOn ? 'Режим датчиков: размер маркера = скорость течения' : 'Стандартный режим');
 }
 
-// ── Filters ────────────────────────────────────────────────
+// Filters
 function setFilter(f, el) {
   currentFilter = f;
   document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
@@ -601,7 +598,7 @@ function populateFilters() {
   zones.forEach(z => { const o = document.createElement('option'); o.value = z; o.textContent = z; zoneSel.appendChild(o); });
 }
 
-// ── Stats ──────────────────────────────────────────────────
+// Stats
 function updateStats(canals) {
   const ok = canals.filter(c => c.status === 'ok').length;
   const warn = canals.filter(c => c.status === 'warning').length;
@@ -615,7 +612,7 @@ function updateStats(canals) {
   document.getElementById('hdr-sensors').textContent = `${online}/${canals.length}`;
 }
 
-// ── Canvas Donut ───────────────────────────────────────────
+// Canvas Donut
 function drawChart(canals) {
   const canvas = document.getElementById('statusChart');
   const ctx = canvas.getContext('2d');
@@ -660,7 +657,7 @@ function drawChart(canals) {
   });
 }
 
-// ── Canal List ─────────────────────────────────────────────
+// Canal List
 function renderList(canals) {
   document.getElementById('list-count').textContent = canals.length;
   const el = document.getElementById('canalList');
@@ -693,7 +690,7 @@ function renderList(canals) {
   }
 }
 
-// ── Alert Ticker ───────────────────────────────────────────
+// Alert Ticker
 function rebuildAlertTicker() {
   const ticker = document.getElementById('alertTicker');
   if (ticker) ticker.innerHTML = '';
@@ -729,7 +726,7 @@ function buildAlertTicker() {
   ticker.appendChild(scroll);
 }
 
-// ── Detail Panel ───────────────────────────────────────────
+// Detail Panel
 function showDetail(id, isReservoir) {
   const c = isReservoir ? RESERVOIRS.find(x => x.id === id) : CANALS_DATA.find(x => x.id === id);
   if (!c) return;
@@ -942,7 +939,7 @@ function drawMiniChart(history) {
   ctx.textAlign = 'left'; ctx.fillText('24ч', 2, H - 2);
 }
 
-// ── 3D Sensor Diagram ─────────────────────────────────────
+// 3D Sensor Diagram
 function show3DView() {
   const isRes = selectedIsReservoir;
   const obj = isRes ? RESERVOIRS.find(x=>x.id===selectedId) : CANALS_DATA.find(x=>x.id===selectedId);
@@ -989,7 +986,7 @@ function enable3DDrag() {
   stage.addEventListener('pointercancel', end);
 }
 
-// ── Reusable live 3D station component ─────────────────────
+// Reusable live 3D station component
 // Pure CSS/HTML 3D — lightweight, no Three.js. Works for both canals (full
 // sensor set) and reservoirs (no sensors → values derived from status/specs).
 // Driven entirely by the object's data, so it can be reused for any station.
@@ -1342,7 +1339,7 @@ function closeDetail() {
   selectedId = null;
 }
 
-// ── Live sensor simulation ─────────────────────────────────
+// Live sensor simulation
 function simulateSensorUpdate() {
   if (!selectedId || selectedIsReservoir) return;
   const c = CANALS_DATA.find(x => x.id === selectedId);
@@ -1362,7 +1359,7 @@ function simulateSensorUpdate() {
   drawMiniChart(s.history);
 }
 
-// ── Report ──────────────────────────────────────────────────
+// Report
 function generateReport() {
   const c = selectedIsReservoir
     ? RESERVOIRS.find(x => x.id === selectedId)

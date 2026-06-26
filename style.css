@@ -72,13 +72,13 @@ body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
     height: auto !important; display: block !important;
     font-family: 'Segoe UI', Arial, sans-serif;
   }
-  /* Hide everything except the open report modal */
-  .header, .sidebar, .map-container, .detail-panel, .toast { display: none !important; }
-  /* Hide closed modals */
-  .modal-overlay[style*="display:none"], .modal-overlay[style*="display: none"] { display: none !important; }
-  /* Show open modal flat on page — no overlay bg, no blank first page */
-  .modal-overlay { display: block !important; position: static !important; background: none !important;
+  /* Print only the report: hide every top-level element except the report modal
+     (header, map, sidebars, toggle buttons, tickers, the 3D modal, etc.) */
+  body > *:not(#reportModal) { display: none !important; }
+  #reportModal { display: block !important; position: static !important; background: none !important;
     padding: 0 !important; margin: 0 !important; overflow: visible !important; }
+  /* if the report isn't open, don't force an empty modal onto the page */
+  #reportModal[style*="display:none"], #reportModal[style*="display: none"] { display: none !important; }
   .modal {
     width: 100% !important; max-width: 100% !important; max-height: none !important; height: auto !important;
     border: none !important; border-radius: 0 !important; overflow: hidden !important;

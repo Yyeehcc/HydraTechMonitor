@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Merge OSM river fragments -> ordered polylines, clip to real Jambyl boundary,
-simplify, and emit real_rivers.js (RIVER_LINES) for the app."""
+"""Build geo_data.js for the app: merge OpenStreetMap river fragments into
+ordered polylines, clip them to the real Jambyl Region boundary, simplify, and
+emit the boundary plus the river lines (also dumped to rivers_data.json)."""
 import json, math, os
 from collections import defaultdict
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# ---- load real boundary (full res) ----
+# Full-resolution oblast boundary, used to clip rivers and points to the region
 kaz = json.load(open(BASE + r"\kaz_adm1.geojson", encoding="utf-8"))
 jf = [f for f in kaz["features"] if f["properties"]["shapeName"] == "Jambyl Region"][0]
 BNDRY = [(p[1], p[0]) for p in jf["geometry"]["coordinates"][0]]  # (lat,lon)
@@ -24,7 +25,7 @@ def point_in_poly(lat, lon, poly):
         j = i
     return inside
 
-# ---- load rivers ----
+# OSM waterway fragments grouped by river name (each value is a list of paths)
 d = json.load(open(BASE + r"\rivers_raw.json", encoding="utf-8"))
 byname = defaultdict(list)
 for e in d["elements"]:
