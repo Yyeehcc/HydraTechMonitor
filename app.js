@@ -216,8 +216,8 @@ function toggleTheme() {
   btn.title = THEME_TIPS[currentTheme];
   if (window._tileLayer) { map.removeLayer(window._tileLayer); }
   window._tileLayer = L.tileLayer(TILES[currentTheme], {
-    attribution: '© OpenStreetMap © CARTO', maxZoom: 18,
-    updateWhenZooming: false, keepBuffer: 4, crossOrigin: true
+    maxZoom: 21, maxNativeZoom: 19,
+    updateWhenZooming: false, keepBuffer: 6, crossOrigin: true
   }).addTo(map);
   window._tileLayer.bringToBack();
   drawChart(filteredCanals);
@@ -317,10 +317,14 @@ function updateTime() {
 function initMap() {
   map = L.map('map', {
     zoomControl: false,
+    attributionControl: false, // remove the bottom Leaflet caption (with the flag)
     preferCanvas: true,
-    zoomSnap: 0.5,            // allow half-steps for a smoother wheel zoom
+    minZoom: 6,
+    maxZoom: 21,              // allow zooming in much closer
+    zoomSnap: 0.25,           // finer steps for a smoother wheel zoom
     zoomDelta: 0.5,
-    wheelPxPerZoomLevel: 120, // less twitchy mouse-wheel zoom
+    wheelPxPerZoomLevel: 140, // less twitchy mouse-wheel zoom
+    wheelDebounceTime: 30,
     zoomAnimation: true,
     markerZoomAnimation: true,
     fadeAnimation: true,
@@ -330,10 +334,10 @@ function initMap() {
   }).setView([42.90, 71.37], 8);
 
   window._tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri, Maxar, Earthstar Geographics',
-    maxZoom: 19,
+    maxZoom: 21,              // Leaflet upscales past native for closer zoom
+    maxNativeZoom: 19,        // Esri imagery is served up to z19
     updateWhenZooming: false, // don't reload tiles mid-zoom — less jank
-    keepBuffer: 4,            // keep more off-screen tiles for smoother panning
+    keepBuffer: 6,            // keep more off-screen tiles for smoother panning
     crossOrigin: true
   }).addTo(map);
 
@@ -1441,28 +1445,54 @@ function generateReport() {
 function closeReport() { closeModal('reportModal'); }
 
 function printReport() {
+  const c = selectedIsReservoir ? RESERVOIRS.find(x => x.id === selectedId)
+                                : CANALS_DATA.find(x => x.id === selectedId);
   const body = document.getElementById('reportBody').innerHTML;
   const loc = currentLang === 'en' ? 'en-US' : 'ru-RU';
-  const w = window.open('', '_blank', 'width=900,height=700');
+  const name = c ? (selectedIsReservoir ? tResName(c) : c.name) : '';
+  const status = c ? tStatus(c.status) : '';
+  const statusClass = c ? c.status : 'ok';
+  const docTitle = `HydroTechMonitor — ${name}`; // becomes the suggested PDF filename
+  const w = window.open('', '_blank', 'width=900,height=800');
   w.document.write(`<!DOCTYPE html><html lang="${currentLang}"><head><meta charset="utf-8">
-<title>${tt('print_title')}</title>
+<title>${docTitle}</title>
 <style>
-  @page { margin: 15mm 12mm; size: A4 portrait; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 16px; font-size: 13px; }
-  .report-section h4 { font-size: 14px; margin: 16px 0 6px; border-bottom: 1px solid #999; padding-bottom: 4px; }
-  .report-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  .report-table th, .report-table td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-  .report-table th { background: #f5f5f5; font-weight: 600; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-  .badge-ok { background:#d1fae5; color:#065f46; }
-  .badge-warning { background:#fef3c7; color:#92400e; }
-  .badge-critical { background:#fee2e2; color:#991b1b; }
+  @page { margin: 14mm 14mm 16mm; size: A4 portrait; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; margin: 0; padding: 0; font-size: 12.5px; line-height: 1.5; }
+  .doc-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 4px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 7px; background: #1e3a8a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .brand .name { font-size: 18px; font-weight: 800; color: #1e3a8a; letter-spacing: .2px; }
+  .brand .name span { color: #0891b2; }
+  .brand .sub { font-size: 10px; color: #64748b; margin-top: 1px; }
+  .doc-meta { text-align: right; font-size: 10px; color: #64748b; }
+  .title-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+  .title-row h1 { font-size: 18px; margin: 0; color: #0f172a; }
+  .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .pill.ok { background:#dcfce7; color:#15803d; }
+  .pill.warning { background:#fef3c7; color:#b45309; }
+  .pill.critical { background:#fee2e2; color:#b91c1c; }
+  .report-section { margin: 14px 0; page-break-inside: avoid; }
+  .report-section h4 { font-size: 13px; margin: 0 0 7px; color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .report-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  .report-table th, .report-table td { border: 1px solid #d6dde8; padding: 6px 10px; text-align: left; vertical-align: top; }
+  .report-table th { background: #eef2f7; font-weight: 700; color: #334155; }
+  .report-table tr:nth-child(even) td { background: #f8fafc; }
   p { margin: 3px 0; }
-  .print-header { display: flex; justify-content: space-between; font-size: 11px; color: #555; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 12px; }
+  .doc-foot { position: fixed; bottom: 6mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; }
 </style></head><body>
-<div class="print-header"><span>${tt('print_header')}</span><span>${new Date().toLocaleString(loc)}</span></div>
+<div class="doc-head">
+  <div class="brand">
+    <div class="mark">&#128167;</div>
+    <div><div class="name">HydroTech<span>Monitor</span></div><div class="sub">${tt('print_header')}</div></div>
+  </div>
+  <div class="doc-meta">${tt('rep_title')}<br>${new Date().toLocaleString(loc)}</div>
+</div>
+<div class="title-row"><h1>${name}</h1><span class="pill ${statusClass}">${status}</span></div>
 ${body}
-<script>window.onload=function(){window.print();}<\/script>
+<div class="doc-foot"><span>HydroTechMonitor &middot; ${tt('print_header')}</span><span>${new Date().toLocaleDateString(loc)}</span></div>
+<script>window.onload=function(){setTimeout(function(){window.print();},120);};window.onafterprint=function(){window.close();};<\/script>
 </body></html>`);
   w.document.close();
 }
