@@ -216,7 +216,8 @@ function toggleTheme() {
   btn.title = THEME_TIPS[currentTheme];
   if (window._tileLayer) { map.removeLayer(window._tileLayer); }
   window._tileLayer = L.tileLayer(TILES[currentTheme], {
-    attribution: '© OpenStreetMap © CARTO', maxZoom: 18
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 18,
+    updateWhenZooming: false, keepBuffer: 4, crossOrigin: true
   }).addTo(map);
   window._tileLayer.bringToBack();
   drawChart(filteredCanals);
@@ -262,7 +263,50 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateTime, 1000);
   sensorInterval = setInterval(simulateSensorUpdate, 8000);
   applyI18n();
+  setupModalDismiss();
 });
+
+// ── Modal helpers ──────────────────────────────────────────
+// Open/close with a fade+scale animation. Display is still toggled so the
+// print stylesheet (which keys off inline display) keeps working.
+function openModal(id) {
+  const o = document.getElementById(id);
+  if (!o) return;
+  o.style.display = 'flex';
+  requestAnimationFrame(() => o.classList.add('open'));
+}
+function closeModal(id) {
+  const o = document.getElementById(id);
+  if (!o || o.style.display === 'none') return;
+  o.classList.remove('open');
+  const hide = () => { o.style.display = 'none'; o.removeEventListener('transitionend', hide); };
+  o.addEventListener('transitionend', hide);
+  setTimeout(hide, 320); // fallback if transitionend doesn't fire
+}
+
+// Wire up Esc key and click-outside for every modal once.
+function setupModalDismiss() {
+  document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    // A modal takes priority; otherwise close the open detail panel.
+    const open = document.querySelector('.modal-overlay.open');
+    if (open) { closeModal(open.id); return; }
+    const detail = document.getElementById('detailContent');
+    if (detail && detail.style.display !== 'none') closeDetail();
+  });
+}
+
+// ── Debounce ───────────────────────────────────────────────
+function debounce(fn, wait) {
+  let t;
+  return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), wait); };
+}
+// Used by the search box and the wear slider so we don't re-render the whole
+// map/list on every keystroke or drag tick.
+const debouncedFilter = debounce(applyFilters, 200);
 
 function updateTime() {
   const d = new Date();
@@ -271,11 +315,26 @@ function updateTime() {
 
 // ── Map ────────────────────────────────────────────────────
 function initMap() {
-  map = L.map('map', { zoomControl: false, preferCanvas: true })
-    .setView([42.90, 71.37], 8);
+  map = L.map('map', {
+    zoomControl: false,
+    preferCanvas: true,
+    zoomSnap: 0.5,            // allow half-steps for a smoother wheel zoom
+    zoomDelta: 0.5,
+    wheelPxPerZoomLevel: 120, // less twitchy mouse-wheel zoom
+    zoomAnimation: true,
+    markerZoomAnimation: true,
+    fadeAnimation: true,
+    inertia: true,            // momentum on drag release
+    inertiaDeceleration: 2600,
+    worldCopyJump: false
+  }).setView([42.90, 71.37], 8);
 
   window._tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri, Maxar, Earthstar Geographics', maxZoom: 19
+    attribution: '© Esri, Maxar, Earthstar Geographics',
+    maxZoom: 19,
+    updateWhenZooming: false, // don't reload tiles mid-zoom — less jank
+    keepBuffer: 4,            // keep more off-screen tiles for smoother panning
+    crossOrigin: true
   }).addTo(map);
 
   markersGroup = L.layerGroup().addTo(map);
@@ -881,13 +940,129 @@ function drawMiniChart(history) {
 function show3DView() {
   const isRes = selectedIsReservoir;
   const obj = isRes ? RESERVOIRS.find(x=>x.id===selectedId) : CANALS_DATA.find(x=>x.id===selectedId);
-  const title = isRes ? tt('d3_res') : tt('d3_canal');
-  const svgContent = isRes ? build3DReservoirSVG(obj) : build3DCanalSVG(obj);
-  document.getElementById('diagram3dTitle').textContent = title;
-  document.getElementById('diagram3dBody').innerHTML = svgContent;
-  document.getElementById('diagram3dModal').style.display = 'flex';
+  if (!obj) return;
+  document.getElementById('diagram3dTitle').textContent = isRes ? tt('d3_res') : tt('d3_canal');
+  const schematic = isRes ? build3DReservoirSVG(obj) : build3DCanalSVG(obj);
+  const schLabel = EN() ? 'Engineering schematic' : 'Подробная инженерная схема';
+  document.getElementById('diagram3dBody').innerHTML =
+    build3DStation(obj) +
+    `<details class="st3d-schematic"><summary>${schLabel}</summary><div class="st3d-schematic-body">${schematic}</div></details>`;
+  enable3DDrag();
+  openModal('diagram3dModal');
 }
-function close3DView() { document.getElementById('diagram3dModal').style.display = 'none'; }
+function close3DView() { closeModal('diagram3dModal'); }
+
+// Let the user spin the 3D model by dragging. Auto-rotation stops on grab.
+function enable3DDrag() {
+  const stage = document.querySelector('#diagram3dBody .st3d-stage');
+  const tank = stage && stage.querySelector('.st3d-tank');
+  if (!tank) return;
+  let dragging = false, sx = 0, sy = 0, rx = -22, ry = -26;
+  const apply = () => { tank.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`; };
+  stage.addEventListener('pointerdown', e => {
+    dragging = true; sx = e.clientX; sy = e.clientY;
+    tank.style.animation = 'none'; // drop auto-spin, switch to manual control
+    apply();
+    stage.classList.add('dragging');
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    ry += (e.clientX - sx) * 0.5;
+    rx -= (e.clientY - sy) * 0.5;
+    rx = Math.max(-80, Math.min(20, rx)); // keep a sensible tilt range
+    sx = e.clientX; sy = e.clientY;
+    apply();
+  });
+  const end = e => {
+    if (!dragging) return;
+    dragging = false; stage.classList.remove('dragging');
+    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+  };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+}
+
+// ── Reusable live 3D station component ─────────────────────
+// Pure CSS/HTML 3D — lightweight, no Three.js. Works for both canals (full
+// sensor set) and reservoirs (no sensors → values derived from status/specs).
+// Driven entirely by the object's data, so it can be reused for any station.
+function build3DStation(obj) {
+  const L = (ru, en) => EN() ? en : ru;
+  const st = obj.status || 'ok';
+  const C = { ok: '#22c55e', warning: '#f59e0b', critical: '#ef4444' }[st] || '#22c55e';
+  const isRes = obj.type === 'reservoir' || !obj.sensors;
+  const s = obj.sensors || {};
+
+  // Water level → fill ratio of the tank (canal channel depth ≈ 2.2 m).
+  const lvlRatio = isRes ? 0.80 : Math.max(0.10, Math.min(1, (s.water_level || 1) / 2.2));
+  const lvlPx = Math.round(lvlRatio * 180); // tank height in CSS is 180px
+  // Flow speed → animation tempo (faster current = shorter loop).
+  const flow = isRes ? 0.4 : (s.flow_speed || 0.5);
+  const flowDur = Math.max(0.6, Math.min(6, 2.4 / Math.max(flow, 0.15))).toFixed(2);
+  const temp = isRes ? null : s.temperature;
+  const risk = (obj.risk_score != null) ? obj.risk_score : ({ ok: 18, warning: 55, critical: 85 }[st]);
+  const online = isRes ? true : !!s.online;
+  // Warm water glows orange, cold glows blue (brightened for a vivid look).
+  const glow = temp == null ? 'rgba(56,189,248,0.72)'
+    : temp >= 22 ? 'rgba(251,146,60,0.78)' : temp >= 14 ? 'rgba(56,189,248,0.72)' : 'rgba(96,165,250,0.8)';
+
+  const statusMsg = st === 'ok' ? L('Сооружение в нормативном состоянии', 'Structure within normal condition')
+    : st === 'warning' ? L('Требуется плановый осмотр', 'Inspection required')
+    : L('Требуется ремонт — повышенный риск', 'Repair required — elevated risk');
+  const statusName = st === 'ok' ? L('Норма', 'Normal')
+    : st === 'warning' ? L('Осмотр', 'Inspection') : L('Ремонт', 'Repair');
+
+  // Floating callouts over the model (always face the viewer for legibility).
+  const levelTxt = isRes ? `${(obj.capacity_mln || 0).toLocaleString(EN() ? 'en-US' : 'ru-RU')} ${L('млн м³', 'M m³')}`
+                         : `${s.water_level} ${L('м', 'm')}`;
+  const callouts = `
+    <div class="st3d-callout c-level"><i class="fa-solid fa-water"></i> ${L('Уровень', 'Level')} <b>${levelTxt}</b></div>
+    <div class="st3d-callout c-flow"><i class="fa-solid fa-gauge-high"></i> ${L('Поток', 'Flow')} <b>${isRes ? '—' : flow + ' ' + L('м/с', 'm/s')}</b></div>
+    ${temp != null ? `<div class="st3d-callout c-temp"><i class="fa-solid fa-temperature-half"></i> ${L('Темп.', 'Temp')} <b>${temp} °C</b></div>` : ''}`;
+
+  // Readout chips below the model.
+  const chip = (icon, label, val) => `<div class="st3d-chip"><i class="fa-solid ${icon}"></i><span class="k">${label}</span><span class="v">${val}</span></div>`;
+  const chips = isRes ? [
+      chip('fa-database', L('Объём', 'Capacity'), `${(obj.capacity_mln || 0).toLocaleString(EN() ? 'en-US' : 'ru-RU')} ${L('млн м³', 'M m³')}`),
+      chip('fa-calendar', L('Год', 'Year'), obj.year || '—'),
+      chip('fa-location-dot', L('Зона', 'Zone'), tZone(obj.zone)),
+    ].join('') : [
+      chip('fa-water', L('Уровень', 'Level'), `${s.water_level} ${L('м', 'm')}`),
+      chip('fa-gauge-high', L('Поток', 'Flow'), `${s.flow_speed} ${L('м/с', 'm/s')}`),
+      chip('fa-temperature-half', L('Темп.', 'Temp'), `${s.temperature} °C`),
+      chip('fa-flask', L('Мутность', 'Turbidity'), `${s.turbidity} NTU`),
+      chip('fa-vial', 'pH', s.ph),
+    ].join('');
+
+  return `
+  <div class="st3d" style="--c:${C};--lvlpx:${lvlPx}px;--flow-dur:${flowDur}s;--glow:${glow}">
+    <div class="st3d-stage">
+      <div class="st3d-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> ${L('тащите, чтобы вращать', 'drag to rotate')}</div>
+      <div class="st3d-shadow"></div>
+      <div class="st3d-tank">
+        <div class="st3d-face tk-bottom"></div>
+        <div class="st3d-face st3d-wall tk-back"></div>
+        <div class="st3d-face st3d-wall tk-left"></div>
+        <div class="st3d-face st3d-wall tk-right"></div>
+        <div class="st3d-face st3d-water-top"></div>
+        <div class="st3d-face st3d-water-front"></div>
+        <div class="st3d-face st3d-wall tk-front"></div>
+      </div>
+      ${callouts}
+      <div class="st3d-statuschip" style="--c:${C}">
+        <span class="pulse"></span>${statusName} · ${online ? L('онлайн', 'online') : L('офлайн', 'offline')}
+      </div>
+    </div>
+    <div class="st3d-readouts">${chips}</div>
+    <div class="st3d-risk">
+      <span class="lbl">${L('Индекс риска', 'Risk index')}</span>
+      <div class="bar"><div class="fill" style="width:${risk}%"></div></div>
+      <span class="rv">${risk}/100</span>
+    </div>
+    <div class="st3d-status" style="--c:${C}">${st === 'ok' ? '✓' : '⚠'} ${statusMsg}</div>
+  </div>`;
+}
 
 function build3DCanalSVG(obj) {
   const s = obj?.sensors || {};
@@ -1260,10 +1435,10 @@ function generateReport() {
       ${c.status==='warning'?`<p style="color:#f59e0b;margin-top:6px">${tt('rep_warnnote')}</p>`:''}
       ${c.status==='ok'?`<p style="color:#22c55e;margin-top:6px">${tt('rep_oknote')}</p>`:''}
     </div>`;
-  document.getElementById('reportModal').style.display = 'flex';
+  openModal('reportModal');
 }
 
-function closeReport() { document.getElementById('reportModal').style.display = 'none'; }
+function closeReport() { closeModal('reportModal'); }
 
 function printReport() {
   const body = document.getElementById('reportBody').innerHTML;

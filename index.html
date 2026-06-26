@@ -6,7 +6,7 @@
 <title>HydroTechMonitor | Жамбылская область</title>
 <link rel="stylesheet" href="lib/leaflet.css"/>
 <link rel="stylesheet" href="lib/fa.css"/>
-<link rel="stylesheet" href="style.css?v=2"/>
+<link rel="stylesheet" href="style.css?v=5"/>
 </head>
 <body>
 
@@ -75,7 +75,7 @@
       </div>
       <div class="filter-group">
         <label data-i18n="wear_max" data-i18n-title="wear_help" title="Степень износа сооружения, %. Ползунок показывает объекты с износом НЕ ВЫШЕ выбранного.">Износ (макс.) <i class="fa-solid fa-circle-question" style="opacity:.5;font-size:10px"></i></label>
-        <input type="range" id="wearMax" min="0" max="1" step="0.05" value="1" oninput="updateWearLabel(this);applyFilters()">
+        <input type="range" id="wearMax" min="0" max="1" step="0.05" value="1" oninput="updateWearLabel(this);debouncedFilter()">
         <span class="range-label" id="wearLabel">до 100%</span>
         <div class="filter-hint" data-i18n="wear_help">Износ сооружения в %. Показывает объекты с износом не выше выбранного.</div>
       </div>
@@ -88,7 +88,7 @@
 
     <div class="sidebar-section">
       <h3><i class="fa-solid fa-magnifying-glass"></i> <span data-i18n="search">Поиск</span></h3>
-      <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="search_ph" placeholder="Название / район / ID..." oninput="applyFilters()">
+      <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="search_ph" placeholder="Название / район / ID..." oninput="debouncedFilter()">
     </div>
 
     <div class="sidebar-section">
@@ -274,7 +274,7 @@
 </div>
 
 <!-- 3D DIAGRAM MODAL -->
-<div class="modal-overlay" id="diagram3dModal" style="display:none" onclick="if(event.target===this)close3DView()">
+<div class="modal-overlay" id="diagram3dModal" style="display:none">
   <div class="modal modal-3d">
     <div class="modal-header">
       <h3><i class="fa-solid fa-cube"></i> <span id="diagram3dTitle">3D Схема установки</span></h3>
@@ -305,6 +305,6 @@
 <script src="geo_data.js?v=8"></script>
 <script src="i18n_data.js?v=8"></script>
 <script src="data.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
