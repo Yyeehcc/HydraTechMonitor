@@ -6,7 +6,7 @@
 <title>HydroTechMonitor | Жамбылская область</title>
 <link rel="stylesheet" href="lib/leaflet.css"/>
 <link rel="stylesheet" href="lib/fa.css"/>
-<link rel="stylesheet" href="style.css?v=5"/>
+<link rel="stylesheet" href="style.css?v=6"/>
 </head>
 <body>
 
@@ -291,10 +291,11 @@
       <h3><i class="fa-solid fa-file-chart-line"></i> <span data-i18n="rep_title">Технический отчёт</span></h3>
       <button onclick="closeReport()"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <div id="printHead"></div>
     <div class="modal-body" id="reportBody"></div>
     <div class="modal-footer">
-      <button class="btn-action btn-report" onclick="printReport()"><i class="fa-solid fa-print"></i> Печать</button>
-      <button class="btn-action btn-track" onclick="closeReport()">Закрыть</button>
+      <button class="btn-action btn-report" onclick="printReport()"><i class="fa-solid fa-print"></i> <span data-i18n="print_btn">Печать (PDF)</span></button>
+      <button class="btn-action btn-track" onclick="closeReport()" data-i18n="close_btn">Закрыть</button>
     </div>
   </div>
 </div>
@@ -305,6 +306,6 @@
 <script src="geo_data.js?v=8"></script>
 <script src="i18n_data.js?v=8"></script>
 <script src="data.js?v=8"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

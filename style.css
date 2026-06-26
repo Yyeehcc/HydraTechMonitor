@@ -55,15 +55,17 @@ body.light .minichart-wrap { background: #f8fafc; }
 body.light .canal-item:hover { background: #e8ecf4; }
 body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
 
+/* Branded print header — only visible when printing */
+#printHead { display: none; }
+
 /* PRINT STYLES */
 @media print {
-  @page { margin: 15mm 12mm; size: A4 portrait; }
-  /* Hide URL, date, page numbers from browser chrome */
-  @page :first { margin-top: 10mm; }
+  @page { margin: 12mm 12mm 14mm; size: A4 portrait; }
   html { height: auto !important; }
   body {
-    overflow: visible !important; background: #fff !important; color: #000 !important;
+    overflow: visible !important; background: #fff !important; color: #1e293b !important;
     height: auto !important; display: block !important;
+    font-family: 'Segoe UI', Arial, sans-serif;
   }
   /* Hide everything except the open report modal */
   .header, .sidebar, .map-container, .detail-panel, .toast { display: none !important; }
@@ -75,20 +77,37 @@ body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
   .modal {
     width: 100% !important; max-height: none !important; height: auto !important;
     border: none !important; border-radius: 0 !important; overflow: visible !important;
-    box-shadow: none !important; background: #fff !important; color: #000 !important;
+    box-shadow: none !important; background: #fff !important; color: #1e293b !important;
     position: static !important; transform: none !important; margin: 0 !important;
   }
-  .modal-header { border-bottom: 2px solid #000 !important; padding: 8px 0 !important; }
-  .modal-header h3 { font-size: 16px !important; color: #000 !important; }
-  .modal-header button { display: none !important; }
+  /* Replace the on-screen modal header with the branded print header */
+  .modal-header, .modal-footer { display: none !important; }
+  #printHead { display: block !important; }
+  .ph-top { display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid #1e3a8a; padding-bottom: 9px; }
+  .ph-brand { display: flex; align-items: center; gap: 9px; }
+  .ph-mark { width: 28px; height: 28px; border-radius: 7px; background: #1e3a8a; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+  .ph-name { font-size: 18px; font-weight: 800; color: #1e3a8a; }
+  .ph-name span { color: #0891b2; }
+  .ph-meta { text-align: right; font-size: 10px; color: #64748b; }
+  .ph-title { display: flex; align-items: center; gap: 10px; margin: 11px 0 2px; }
+  .ph-title > span:first-child { font-size: 18px; font-weight: 800; color: #0f172a; }
+  .ph-pill { padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .ph-pill.ok { background: #dcfce7 !important; color: #15803d !important; }
+  .ph-pill.warning { background: #fef3c7 !important; color: #b45309 !important; }
+  .ph-pill.critical { background: #fee2e2 !important; color: #b91c1c !important; }
   .modal-body {
     overflow: visible !important; max-height: none !important; height: auto !important;
-    padding: 12px 0 !important; color: #000 !important;
+    padding: 4px 0 0 !important; color: #1e293b !important;
   }
-  .modal-footer { display: none !important; }
-  .report-section h4 { color: #000 !important; border-bottom: 1px solid #999 !important; }
-  .report-table td, .report-table th { border-color: #999 !important; color: #000 !important; background: #fff !important; }
-  .report-table th { background: #f5f5f5 !important; }
+  .report-section { page-break-inside: avoid; margin: 13px 0; }
+  .report-section h4 { color: #1e3a8a !important; border-bottom: 1px solid #cbd5e1 !important;
+    text-transform: uppercase; letter-spacing: .4px; font-size: 12.5px; padding-bottom: 4px; }
+  .report-table { width: 100%; border-collapse: collapse; }
+  .report-table td, .report-table th { border: 1px solid #d6dde8 !important; color: #1e293b !important; padding: 6px 10px; }
+  .report-table th { background: #eef2f7 !important; font-weight: 700; }
+  .report-table tr:nth-child(even) td { background: #f8fafc !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 

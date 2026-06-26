@@ -45,6 +45,7 @@ const LANG = {
     rep_warnnote:'Рекомендуется плановый осмотр для оценки необходимости ремонта.',
     rep_oknote:'Объект в нормативном состоянии. Плановое обслуживание.',
     print_title:'HydroTechMonitor — Технический отчёт', print_header:'HydroTechMonitor | Жамбылская область',
+    print_btn:'Печать (PDF)', close_btn:'Закрыть',
     track_on:'Добавлен в мониторинг:', track_off:'Отслеживание снято:', refreshed:'Данные датчиков обновлены',
   },
   en: {
@@ -91,6 +92,7 @@ const LANG = {
     rep_warnnote:'A scheduled inspection is recommended to assess repair needs.',
     rep_oknote:'Object in normative condition. Routine maintenance.',
     print_title:'HydroTechMonitor — Technical Report', print_header:'HydroTechMonitor | Zhambyl Region',
+    print_btn:'Print (PDF)', close_btn:'Close',
     track_on:'Added to monitoring:', track_off:'Tracking removed:', refreshed:'Sensor data updated',
   }
 };
@@ -1445,56 +1447,31 @@ function generateReport() {
 function closeReport() { closeModal('reportModal'); }
 
 function printReport() {
+  // Print the report in-place (no new tab). The browser print dialog lets the
+  // user pick "Microsoft Print to PDF" / "Save as PDF" to download a PDF.
+  // A print-only branded header is injected into the modal; @media print hides
+  // everything else on the page.
   const c = selectedIsReservoir ? RESERVOIRS.find(x => x.id === selectedId)
                                 : CANALS_DATA.find(x => x.id === selectedId);
-  const body = document.getElementById('reportBody').innerHTML;
   const loc = currentLang === 'en' ? 'en-US' : 'ru-RU';
   const name = c ? (selectedIsReservoir ? tResName(c) : c.name) : '';
   const status = c ? tStatus(c.status) : '';
   const statusClass = c ? c.status : 'ok';
-  const docTitle = `HydroTechMonitor — ${name}`; // becomes the suggested PDF filename
-  const w = window.open('', '_blank', 'width=900,height=800');
-  w.document.write(`<!DOCTYPE html><html lang="${currentLang}"><head><meta charset="utf-8">
-<title>${docTitle}</title>
-<style>
-  @page { margin: 14mm 14mm 16mm; size: A4 portrait; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; margin: 0; padding: 0; font-size: 12.5px; line-height: 1.5; }
-  .doc-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 4px; }
-  .brand { display: flex; align-items: center; gap: 9px; }
-  .brand .mark { width: 30px; height: 30px; border-radius: 7px; background: #1e3a8a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-  .brand .name { font-size: 18px; font-weight: 800; color: #1e3a8a; letter-spacing: .2px; }
-  .brand .name span { color: #0891b2; }
-  .brand .sub { font-size: 10px; color: #64748b; margin-top: 1px; }
-  .doc-meta { text-align: right; font-size: 10px; color: #64748b; }
-  .title-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
-  .title-row h1 { font-size: 18px; margin: 0; color: #0f172a; }
-  .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-  .pill.ok { background:#dcfce7; color:#15803d; }
-  .pill.warning { background:#fef3c7; color:#b45309; }
-  .pill.critical { background:#fee2e2; color:#b91c1c; }
-  .report-section { margin: 14px 0; page-break-inside: avoid; }
-  .report-section h4 { font-size: 13px; margin: 0 0 7px; color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
-  .report-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-  .report-table th, .report-table td { border: 1px solid #d6dde8; padding: 6px 10px; text-align: left; vertical-align: top; }
-  .report-table th { background: #eef2f7; font-weight: 700; color: #334155; }
-  .report-table tr:nth-child(even) td { background: #f8fafc; }
-  p { margin: 3px 0; }
-  .doc-foot { position: fixed; bottom: 6mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; }
-</style></head><body>
-<div class="doc-head">
-  <div class="brand">
-    <div class="mark">&#128167;</div>
-    <div><div class="name">HydroTech<span>Monitor</span></div><div class="sub">${tt('print_header')}</div></div>
-  </div>
-  <div class="doc-meta">${tt('rep_title')}<br>${new Date().toLocaleString(loc)}</div>
-</div>
-<div class="title-row"><h1>${name}</h1><span class="pill ${statusClass}">${status}</span></div>
-${body}
-<div class="doc-foot"><span>HydroTechMonitor &middot; ${tt('print_header')}</span><span>${new Date().toLocaleDateString(loc)}</span></div>
-<script>window.onload=function(){setTimeout(function(){window.print();},120);};window.onafterprint=function(){window.close();};<\/script>
-</body></html>`);
-  w.document.close();
+  const head = document.getElementById('printHead');
+  if (head) {
+    head.innerHTML = `
+      <div class="ph-top">
+        <div class="ph-brand"><span class="ph-mark">&#128167;</span>
+          <span class="ph-name">HydroTech<span>Monitor</span></span></div>
+        <div class="ph-meta">${tt('rep_title')}<br>${new Date().toLocaleString(loc)}</div>
+      </div>
+      <div class="ph-title"><span>${name}</span><span class="ph-pill ${statusClass}">${status}</span></div>`;
+  }
+  // give the browser a nice default filename via the document title
+  const prevTitle = document.title;
+  document.title = `HydroTechMonitor — ${name}`;
+  window.onafterprint = () => { document.title = prevTitle; };
+  window.print();
 }
 
 function trackObject() {
