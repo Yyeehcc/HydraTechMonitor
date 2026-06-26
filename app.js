@@ -45,7 +45,7 @@ const LANG = {
     rep_warnnote:'Рекомендуется плановый осмотр для оценки необходимости ремонта.',
     rep_oknote:'Объект в нормативном состоянии. Плановое обслуживание.',
     print_title:'HydroTechMonitor — Технический отчёт', print_header:'HydroTechMonitor | Жамбылская область',
-    print_btn:'Печать (PDF)', close_btn:'Закрыть',
+    print_btn:'Печать', close_btn:'Закрыть',
     track_on:'Добавлен в мониторинг:', track_off:'Отслеживание снято:', refreshed:'Данные датчиков обновлены',
   },
   en: {
@@ -92,7 +92,7 @@ const LANG = {
     rep_warnnote:'A scheduled inspection is recommended to assess repair needs.',
     rep_oknote:'Object in normative condition. Routine maintenance.',
     print_title:'HydroTechMonitor — Technical Report', print_header:'HydroTechMonitor | Zhambyl Region',
-    print_btn:'Print (PDF)', close_btn:'Close',
+    print_btn:'Print', close_btn:'Close',
     track_on:'Added to monitoring:', track_off:'Tracking removed:', refreshed:'Sensor data updated',
   }
 };

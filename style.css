@@ -61,9 +61,14 @@ body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
 /* PRINT STYLES */
 @media print {
   @page { margin: 12mm 12mm 14mm; size: A4 portrait; }
+  html, body {
+    width: 100% !important; max-width: 100% !important;
+    margin: 0 !important; padding: 0 !important;
+    overflow-x: hidden !important;   /* nothing pokes out the sides */
+  }
   html { height: auto !important; }
   body {
-    overflow: visible !important; background: #fff !important; color: #1e293b !important;
+    overflow-y: visible !important; background: #fff !important; color: #1e293b !important;
     height: auto !important; display: block !important;
     font-family: 'Segoe UI', Arial, sans-serif;
   }
@@ -75,8 +80,8 @@ body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
   .modal-overlay { display: block !important; position: static !important; background: none !important;
     padding: 0 !important; margin: 0 !important; overflow: visible !important; }
   .modal {
-    width: 100% !important; max-height: none !important; height: auto !important;
-    border: none !important; border-radius: 0 !important; overflow: visible !important;
+    width: 100% !important; max-width: 100% !important; max-height: none !important; height: auto !important;
+    border: none !important; border-radius: 0 !important; overflow: hidden !important;
     box-shadow: none !important; background: #fff !important; color: #1e293b !important;
     position: static !important; transform: none !important; margin: 0 !important;
   }
@@ -98,14 +103,16 @@ body.light .canal-item.selected { background: rgba(37,99,235,0.1); }
   .ph-pill.warning { background: #fef3c7 !important; color: #b45309 !important; }
   .ph-pill.critical { background: #fee2e2 !important; color: #b91c1c !important; }
   .modal-body {
-    overflow: visible !important; max-height: none !important; height: auto !important;
-    padding: 4px 0 0 !important; color: #1e293b !important;
+    overflow: hidden !important; max-height: none !important; height: auto !important;
+    max-width: 100% !important; padding: 4px 0 0 !important; color: #1e293b !important;
   }
+  #printHead, .report-section, .report-section p { max-width: 100% !important; overflow-wrap: anywhere; }
   .report-section { page-break-inside: avoid; margin: 13px 0; }
   .report-section h4 { color: #1e3a8a !important; border-bottom: 1px solid #cbd5e1 !important;
     text-transform: uppercase; letter-spacing: .4px; font-size: 12.5px; padding-bottom: 4px; }
-  .report-table { width: 100%; border-collapse: collapse; }
-  .report-table td, .report-table th { border: 1px solid #d6dde8 !important; color: #1e293b !important; padding: 6px 10px; }
+  .report-table { width: 100% !important; max-width: 100% !important; border-collapse: collapse; table-layout: fixed; }
+  .report-table td, .report-table th { border: 1px solid #d6dde8 !important; color: #1e293b !important;
+    padding: 6px 10px; overflow-wrap: anywhere; word-break: break-word; }
   .report-table th { background: #eef2f7 !important; font-weight: 700; }
   .report-table tr:nth-child(even) td { background: #f8fafc !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
